@@ -8,6 +8,7 @@ import java.util.List;
 
 public class App extends ChaincodeBase {
     public static void main(String[] args) throws IOException, InterruptedException {
+
         App chaincode = new App();
 
         chaincode.start(args);
