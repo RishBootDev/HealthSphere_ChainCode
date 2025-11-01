@@ -99,7 +99,6 @@ public class LabContract {
             throw new RuntimeException("Lab not found: " + labId);
         }
 
-        // optionally delete all associated reports
         Lab lab = gson.fromJson(json, Lab.class);
         if (lab.getReportIds() != null) {
             for (String reportId : lab.getReportIds()) {

@@ -1,12 +1,14 @@
 package org.rishbootdev.chaincode.model;
 
 
+import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -15,21 +17,29 @@ import java.util.List;
 @DataType
 public class Doctor {
 
-    @Property()
+    @Property
+    @SerializedName("doctorId")
     private String doctorId;
-    @Property()
+    @Property
+    @SerializedName("name")
     private String name;
-    @Property()
+    @Property
+    @SerializedName("specialization")
     private String specialization;
-    @Property()
+    @Property
+    @SerializedName("hospitalId")
     private String hospitalId;
     @Property
-    private List<String> patientId;
+    @SerializedName("patientId")
+    private List<String> patientId=new ArrayList<>();
 
     @Property
-    private List<String> recordId;
-    @Property()
+    @SerializedName("recordId")
+    private List<String> recordId=new ArrayList<>();
+    @Property
+    @SerializedName("qualification")
     private String qualification;
     @Property()
+    @SerializedName("contact")
     private String contact;
 }

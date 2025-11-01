@@ -1,5 +1,6 @@
 package org.rishbootdev.chaincode.model;
 
+import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,11 +14,26 @@ import org.hyperledger.fabric.contract.annotation.Property;
 public class Medicine {
 
     @Property
+    @SerializedName("name")
     private String name;
-    @Property private String Id;
-    @Property private String manufacturer;
-    @Property private String dosage;
-    @Property private int stock;
-    @Property private String expiryDate;
 
+    @Property
+    @SerializedName("id")
+    private String id;
+
+    @Property
+    @SerializedName("manufacturer")
+    private String manufacturer;
+
+    @Property
+    @SerializedName("dosage")
+    private String dosage;
+
+    @Property
+    @SerializedName("stock")
+    private int stock;
+
+    @Property
+    @SerializedName("expiryDate")
+    private String expiryDate;
 }
