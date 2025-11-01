@@ -4,7 +4,6 @@ import org.hyperledger.fabric.shim.*;
 
 import java.io.IOException;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 
 public class App extends ChaincodeBase {
