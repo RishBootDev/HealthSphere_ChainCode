@@ -3,31 +3,35 @@ package org.rishbootdev;
 import org.hyperledger.fabric.shim.*;
 
 import java.io.IOException;
+
 import java.net.InetSocketAddress;
 import java.util.List;
 
 public class App extends ChaincodeBase {
+    public static void main(String[] args) throws IOException, InterruptedException {
+        App chaincode = new App();
 
-    public static void main(String[] args,int a) throws IOException, InterruptedException {
+        chaincode.start(args);
 
-        ChaincodeBase chaincode = new App();
+//        String chaincodeId = System.getenv("CORE_CHAINCODE_ID_NAME");
+//        if (chaincodeId == null || chaincodeId.isEmpty()) {
+//            throw new IllegalArgumentException("CORE_CHAINCODE_ID_NAME environment variable is required");
+//        }
+//
+//        String address = System.getenv().getOrDefault("CHAINCODE_SERVER_ADDRESS", "0.0.0.0:9999");
+//        String[] parts = address.split(":");
+//        String host = parts[0];
+//        int port = Integer.parseInt(parts[1]);
+
 //        ChaincodeServerProperties props = new ChaincodeServerProperties();
-//        props.setServerAddress(new InetSocketAddress("localhost", 9999));
-//        props.setMaxInboundMessageSize(104857600);
-//        props.setMaxInboundMetadataSize(104857600);
+//        props.setServerAddress(new InetSocketAddress(host, port));
 //        props.setTlsEnabled(false);
 //
 //        NettyChaincodeServer server = new NettyChaincodeServer(chaincode, props);
-        chaincode.start(args);
-        System.out.println("Starting external chaincode gRPC server...");
-
-        System.out.println("Starting chaincode event loop...");
-
-
+//        server.start();
+//
+//        Thread.currentThread().join();
     }
-
-
-
     @Override
     public Response init(ChaincodeStub stub) {
         System.out.println("=== Chaincode initialization ===");

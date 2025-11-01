@@ -6,7 +6,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.HimanshuTech</groupId>
+    <groupId>org.Rishabh</groupId>
     <artifactId>HealthSphere_Chaincode</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
@@ -32,11 +32,7 @@
             <artifactId>fabric-chaincode-shim</artifactId>
             <version>${fabric.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.hyperledger.fabric-chaincode-java</groupId>
-            <artifactId>fabric-chaincode-shim</artifactId>
-            <version>2.5.1</version>
-        </dependency>
+
 
 
         <!-- Gson for JSON serialization -->
