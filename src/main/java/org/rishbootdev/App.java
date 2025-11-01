@@ -12,6 +12,7 @@ public class App extends ChaincodeBase {
 
         chaincode.start(args);
 
+
 //        String chaincodeId = System.getenv("CORE_CHAINCODE_ID_NAME");
 //        if (chaincodeId == null || chaincodeId.isEmpty()) {
 //            throw new IllegalArgumentException("CORE_CHAINCODE_ID_NAME environment variable is required");
