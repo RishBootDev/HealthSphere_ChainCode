@@ -1,14 +1,32 @@
 package org.rishbootdev;
 
-import org.hyperledger.fabric.shim.ChaincodeBase;
-import org.hyperledger.fabric.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.*;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 public class App extends ChaincodeBase {
 
-    public static void main(String[] args) {
-        new App().start(args);
+    public static void main(String[] args,int a) throws IOException, InterruptedException {
+
+        ChaincodeBase chaincode = new App();
+//        ChaincodeServerProperties props = new ChaincodeServerProperties();
+//        props.setServerAddress(new InetSocketAddress("localhost", 9999));
+//        props.setMaxInboundMessageSize(104857600);
+//        props.setMaxInboundMetadataSize(104857600);
+//        props.setTlsEnabled(false);
+//
+//        NettyChaincodeServer server = new NettyChaincodeServer(chaincode, props);
+        chaincode.start(args);
+        System.out.println("Starting external chaincode gRPC server...");
+
+        System.out.println("Starting chaincode event loop...");
+
+
     }
+
+
 
     @Override
     public Response init(ChaincodeStub stub) {

@@ -32,6 +32,12 @@
             <artifactId>fabric-chaincode-shim</artifactId>
             <version>${fabric.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.hyperledger.fabric-chaincode-java</groupId>
+            <artifactId>fabric-chaincode-shim</artifactId>
+            <version>2.5.1</version>
+        </dependency>
+
 
         <!-- Gson for JSON serialization -->
         <dependency>
@@ -75,6 +81,12 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>5.5.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
