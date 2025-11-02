@@ -2,24 +2,29 @@ package org.rishbootdev.chaincode.contracts;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import org.rishbootdev.chaincode.model.Prescription;
-import org.rishbootdev.chaincode.model.Medicine;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
+import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
+import org.rishbootdev.chaincode.model.Medicine;
+import org.rishbootdev.chaincode.model.Prescription;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Contract(name = "PrescriptionContract")
+@Default
 public class PrescriptionContract {
 
     private final Gson gson = new Gson();
+
     private static final String PRESC_PREFIX = "PRESC_";
     private static final String MEDICINE_PREFIX = "MEDICINE_";
+    private static final String PATIENT_PREFIX = "PATIENT_";
+    private static final String DOCTOR_PREFIX = "DOCTOR_";
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public String createPrescription(Context ctx, String prescriptionJson) {
@@ -35,16 +40,20 @@ public class PrescriptionContract {
             throw new RuntimeException("Prescription already exists: " + prescription.getPrescriptionId());
         }
 
+        if (prescription.getMedicineIdList() == null) {
+            prescription.setMedicineIdList(new ArrayList<>());
+        }
+
         stub.putStringState(key, gson.toJson(prescription));
-        return "Prescription created successfully for patient: " + prescription.getPatientId();
+        return "Prescription created successfully: " + prescription.getPrescriptionId();
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String getPrescriptionById(Context ctx, String prescriptionId) {
         ChaincodeStub stub = ctx.getStub();
         String key = PRESC_PREFIX + prescriptionId;
-
         String json = stub.getStringState(key);
+
         if (json == null || json.isEmpty()) {
             throw new RuntimeException("Prescription not found: " + prescriptionId);
         }
@@ -57,16 +66,15 @@ public class PrescriptionContract {
         ChaincodeStub stub = ctx.getStub();
         List<Prescription> prescriptions = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
+        try (QueryResultsIterator<KeyValue> results =
+                     stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 try {
-                    Prescription p = gson.fromJson(kv.getStringValue(), Prescription.class);
-                    if (p != null && p.getPrescriptionId() != null) {
-                        prescriptions.add(p);
+                    Prescription presc = gson.fromJson(kv.getStringValue(), Prescription.class);
+                    if (presc != null && presc.getPrescriptionId() != null) {
+                        prescriptions.add(presc);
                     }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("wrong json parsing");
-                }
+                } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
             throw new RuntimeException("Error fetching prescriptions: " + e.getMessage());
@@ -76,17 +84,17 @@ public class PrescriptionContract {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public String updatePrescription(Context ctx, String prescriptionId, String updatedJson) {
+    public String updatePrescription(Context ctx, String prescriptionJson) {
         ChaincodeStub stub = ctx.getStub();
-        String key = PRESC_PREFIX + prescriptionId;
+        Prescription prescription = gson.fromJson(prescriptionJson, Prescription.class);
 
+        String key = PRESC_PREFIX + prescription.getPrescriptionId();
         if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
+            throw new RuntimeException("Prescription not found: " + prescription.getPrescriptionId());
         }
 
-        Prescription updated = gson.fromJson(updatedJson, Prescription.class);
-        stub.putStringState(key, gson.toJson(updated));
-        return "Prescription updated: " + prescriptionId;
+        stub.putStringState(key, gson.toJson(prescription));
+        return "🩺 Prescription updated successfully: " + prescription.getPrescriptionId();
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
@@ -94,12 +102,99 @@ public class PrescriptionContract {
         ChaincodeStub stub = ctx.getStub();
         String key = PRESC_PREFIX + prescriptionId;
 
-        if (stub.getStringState(key).isEmpty()) {
+        String existing = stub.getStringState(key);
+        if (existing == null || existing.isEmpty()) {
             throw new RuntimeException("Prescription not found: " + prescriptionId);
         }
 
+        Prescription presc = gson.fromJson(existing, Prescription.class);
+
+        if (presc.getMedicineIdList() != null) {
+            for (String medId : presc.getMedicineIdList()) {
+                String medKey = MEDICINE_PREFIX + medId;
+                String medJson = stub.getStringState(medKey);
+                if (medJson != null && !medJson.isEmpty()) {
+                    Medicine med = gson.fromJson(medJson, Medicine.class);
+                    stub.putStringState(medKey, gson.toJson(med));
+                }
+            }
+        }
+
         stub.delState(key);
-        return "🗑️ Prescription deleted successfully: " + prescriptionId;
+        return "Prescription deleted: " + prescriptionId;
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void addMedicineToPrescription(Context ctx, String prescriptionId, String medicineId) {
+        ChaincodeStub stub = ctx.getStub();
+        String prescKey = PRESC_PREFIX + prescriptionId;
+        String prescJson = stub.getStringState(prescKey);
+
+        if (prescJson == null || prescJson.isEmpty()) {
+            throw new RuntimeException("Prescription not found: " + prescriptionId);
+        }
+
+        String medKey = MEDICINE_PREFIX + medicineId;
+        String medJson = stub.getStringState(medKey);
+        if (medJson == null || medJson.isEmpty()) {
+            throw new RuntimeException("Medicine not found: " + medicineId);
+        }
+
+        Prescription prescription = gson.fromJson(prescJson, Prescription.class);
+        List<String> meds = prescription.getMedicineIdList();
+        if (meds == null) meds = new ArrayList<>();
+
+        if (!meds.contains(medicineId)) {
+            meds.add(medicineId);
+            prescription.setMedicineIdList(meds);
+            stub.putStringState(prescKey, gson.toJson(prescription));
+        }
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public void removeMedicineFromPrescription(Context ctx, String prescriptionId, String medicineId) {
+        ChaincodeStub stub = ctx.getStub();
+        String prescKey = PRESC_PREFIX + prescriptionId;
+        String prescJson = stub.getStringState(prescKey);
+
+        if (prescJson == null || prescJson.isEmpty()) {
+            throw new RuntimeException("Prescription not found: " + prescriptionId);
+        }
+
+        Prescription prescription = gson.fromJson(prescJson, Prescription.class);
+        List<String> meds = prescription.getMedicineIdList();
+
+        if (meds != null && meds.remove(medicineId)) {
+            prescription.setMedicineIdList(meds);
+            stub.putStringState(prescKey, gson.toJson(prescription));
+        }
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public String getMedicinesForPrescription(Context ctx, String prescriptionId) {
+        ChaincodeStub stub = ctx.getStub();
+        String prescJson = stub.getStringState(PRESC_PREFIX + prescriptionId);
+
+        if (prescJson == null || prescJson.isEmpty()) {
+            throw new RuntimeException("Prescription not found: " + prescriptionId);
+        }
+
+        Prescription prescription = gson.fromJson(prescJson, Prescription.class);
+        List<String> medicineIds = prescription.getMedicineIdList();
+        List<Medicine> medicines = new ArrayList<>();
+
+        if (medicineIds != null) {
+            for (String medId : medicineIds) {
+                String medJson = stub.getStringState(MEDICINE_PREFIX + medId);
+                if (medJson != null && !medJson.isEmpty()) {
+                    try {
+                        medicines.add(gson.fromJson(medJson, Medicine.class));
+                    } catch (JsonSyntaxException ignored) {}
+                }
+            }
+        }
+
+        return gson.toJson(medicines);
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
@@ -107,7 +202,8 @@ public class PrescriptionContract {
         ChaincodeStub stub = ctx.getStub();
         List<Prescription> prescriptions = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
+        try (QueryResultsIterator<KeyValue> results =
+                     stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 Prescription p = gson.fromJson(kv.getStringValue(), Prescription.class);
                 if (p != null && patientId.equals(p.getPatientId())) {
@@ -115,7 +211,7 @@ public class PrescriptionContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error reading prescriptions: " + e.getMessage());
+            throw new RuntimeException("Error fetching prescriptions by patient: " + e.getMessage());
         }
 
         return gson.toJson(prescriptions);
@@ -126,7 +222,8 @@ public class PrescriptionContract {
         ChaincodeStub stub = ctx.getStub();
         List<Prescription> prescriptions = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
+        try (QueryResultsIterator<KeyValue> results =
+                     stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 Prescription p = gson.fromJson(kv.getStringValue(), Prescription.class);
                 if (p != null && doctorId.equals(p.getDoctorId())) {
@@ -134,7 +231,7 @@ public class PrescriptionContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error reading prescriptions: " + e.getMessage());
+            throw new RuntimeException("Error fetching prescriptions by doctor: " + e.getMessage());
         }
 
         return gson.toJson(prescriptions);
@@ -143,54 +240,20 @@ public class PrescriptionContract {
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String searchPrescriptions(Context ctx, String keyword) {
         ChaincodeStub stub = ctx.getStub();
-        List<Prescription> prescriptions = new ArrayList<>();
+        List<Prescription> resultsList = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
+        try (QueryResultsIterator<KeyValue> results =
+                     stub.getStateByRange(PRESC_PREFIX, PRESC_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 Prescription p = gson.fromJson(kv.getStringValue(), Prescription.class);
-                if (p != null) {
-                    String data = gson.toJson(p).toLowerCase();
-                    if (data.contains(keyword.toLowerCase())) {
-                        prescriptions.add(p);
-                    }
+                if (p != null && gson.toJson(p).toLowerCase().contains(keyword.toLowerCase())) {
+                    resultsList.add(p);
                 }
             }
         } catch (Exception e) {
             throw new RuntimeException("Error searching prescriptions: " + e.getMessage());
         }
 
-        return gson.toJson(prescriptions);
-    }
-
-    @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getMedicinesForPrescription(Context ctx, String prescriptionId) {
-        ChaincodeStub stub = ctx.getStub();
-        String json = stub.getStringState(PRESC_PREFIX + prescriptionId);
-
-        if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
-        }
-
-        Prescription prescription = gson.fromJson(json, Prescription.class);
-        List<String> medicineIds = prescription.getMedicineIdList();
-        List<Medicine> medicines = new ArrayList<>();
-
-        if (medicineIds == null || medicineIds.isEmpty()) {
-            return "[]";
-        }
-
-        for (String medId : medicineIds) {
-            String medJson = stub.getStringState(MEDICINE_PREFIX + medId);
-            if (medJson != null && !medJson.isEmpty()) {
-                try {
-                    Medicine med = gson.fromJson(medJson, Medicine.class);
-                    if (med != null) {
-                        medicines.add(med);
-                    }
-                } catch (JsonSyntaxException ignore) {}
-            }
-        }
-
-        return gson.toJson(medicines);
+        return gson.toJson(resultsList);
     }
 }

@@ -2,274 +2,224 @@ package org.rishbootdev.chaincode.contracts;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import org.rishbootdev.chaincode.model.Lab;
-import org.rishbootdev.chaincode.model.LabReport;
 import org.hyperledger.fabric.contract.Context;
-import org.hyperledger.fabric.contract.annotation.Contract;
-import org.hyperledger.fabric.contract.annotation.Transaction;
+import org.hyperledger.fabric.contract.annotation.*;
+import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
+import org.rishbootdev.chaincode.model.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-//import static org.HimanshuTech.chaincode.contracts.PatientContract.REPORT_PREFIX;
-
-@Contract(name = "LabContract")
+@Contract(
+        name = "LabContract",
+        info = @Info(
+                title = "Lab Contract",
+                description = "Handles Lab CRUD operations and relationships with Hospitals, Patients, and Lab Reports",
+                version = "1.0.0"
+        )
+)
+@Default
 public class LabContract {
 
     private final Gson gson = new Gson();
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Lab createLab(Context ctx, String labId, String name) {
+        ChaincodeStub stub = ctx.getStub();
+        if (!stub.getStringState(labId).isEmpty()) {
+            throw new ChaincodeException("Lab already exists with ID: " + labId);
+        }
+
+        Lab lab = new Lab(labId, name, new ArrayList<>());
+        stub.putStringState(labId, gson.toJson(lab));
+        return lab;
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public Lab readLab(Context ctx, String labId) {
+        String json = ctx.getStub().getStringState(labId);
+        if (json == null || json.isEmpty()) {
+            throw new ChaincodeException("Lab not found: " + labId);
+        }
+        return gson.fromJson(json, Lab.class);
+    }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void createLab(Context ctx, String labJson) {
+    public Lab updateLab(Context ctx, String labId, String name) {
+        Lab lab = readLab(ctx, labId);
+        lab.setName(name);
+        ctx.getStub().putStringState(labId, gson.toJson(lab));
+        return lab;
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public String deleteLab(Context ctx, String labId) {
         ChaincodeStub stub = ctx.getStub();
-        Lab lab = gson.fromJson(labJson, Lab.class);
+        Lab lab = readLab(ctx, labId);
 
-        if (lab.getLabId() == null || lab.getLabId().isEmpty()) {
-            throw new RuntimeException("Lab ID cannot be empty");
+        if (lab.getReportIds() != null) {
+            for (String reportId : lab.getReportIds()) {
+                stub.delState(reportId);
+            }
         }
 
-        String key = "LAB_" + lab.getLabId();
-        if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Lab already exists: " + lab.getLabId());
-        }
-
-        if (lab.getReportIds() == null) {
-            lab.setReportIds(new ArrayList<>());
-        }
-
-        stub.putStringState(key, gson.toJson(lab));
+        stub.delState(labId);
+        return "Deleted Lab with ID: " + labId;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getLab(Context ctx, String labId) {
-        String key = "LAB_" + labId;
-        String json = ctx.getStub().getStringState(key);
-        if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Lab not found: " + labId);
-        }
-        return json;
-    }
-
-    @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getAllLabs(Context ctx) throws Exception {
+    public List<Lab> getAllLabs(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         List<Lab> labs = new ArrayList<>();
 
-        String startKey = "LAB_";
-        String endKey = "LAB_\uFFFF";
-
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(startKey, endKey)) {
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
             for (KeyValue kv : results) {
                 try {
                     Lab lab = gson.fromJson(kv.getStringValue(), Lab.class);
                     if (lab != null && lab.getLabId() != null) {
                         labs.add(lab);
                     }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("Skipping invalid Lab record");
+                } catch (JsonSyntaxException ignored) {
                 }
             }
+        } catch (Exception e) {
+            throw new ChaincodeException(e.getMessage());
         }
 
-        return gson.toJson(labs);
+        return labs;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void updateLab(Context ctx, String labJson) {
+    public LabReport createLabReport(Context ctx, String reportId, String patientId,
+                                     String testType, String testResult, String labId,
+                                     String testDate, String remarks) {
         ChaincodeStub stub = ctx.getStub();
-        Lab lab = gson.fromJson(labJson, Lab.class);
 
-        String key = "LAB_" + lab.getLabId();
-        if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Lab not found: " + lab.getLabId());
+        if (!stub.getStringState(reportId).isEmpty()) {
+            throw new ChaincodeException("Lab Report already exists with ID: " + reportId);
         }
 
-        stub.putStringState(key, gson.toJson(lab));
-    }
+        Lab lab = readLab(ctx, labId);
 
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void deleteLab(Context ctx, String labId) {
-        ChaincodeStub stub = ctx.getStub();
-        String key = "LAB_" + labId;
+        LabReport report = new LabReport(reportId, patientId, testType, testResult, labId, testDate, remarks);
 
-        String json = stub.getStringState(key);
-        if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Lab not found: " + labId);
+        if (!lab.getReportIds().contains(reportId)) {
+            lab.getReportIds().add(reportId);
         }
 
-        Lab lab = gson.fromJson(json, Lab.class);
-        if (lab.getReportIds() != null) {
-            for (String reportId : lab.getReportIds()) {
-                stub.delState("REPORT_" + reportId);
-            }
-        }
+        stub.putStringState(labId, gson.toJson(lab));
+        stub.putStringState(reportId, gson.toJson(report));
 
-        stub.delState(key);
-    }
-
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void createLabReport(Context ctx, String reportJson) {
-        ChaincodeStub stub = ctx.getStub();
-        LabReport report = gson.fromJson(reportJson, LabReport.class);
-
-        if (report.getReportId() == null || report.getReportId().isEmpty()) {
-            throw new RuntimeException("Report ID cannot be empty");
-        }
-
-        String key = "REPORT_" + report.getReportId();
-        if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Lab report already exists: " + report.getReportId());
-        }
-
-        String labKey = "LAB_" + report.getLabId();
-        String labJson = stub.getStringState(labKey);
-        if (labJson == null || labJson.isEmpty()) {
-            throw new RuntimeException("Associated Lab not found: " + report.getLabId());
-        }
-
-        stub.putStringState(key, gson.toJson(report));
-
-        Lab lab = gson.fromJson(labJson, Lab.class);
-        List<String> reportIds = lab.getReportIds();
-        if (reportIds == null) {
-            reportIds = new ArrayList<>();
-        }
-        reportIds.add(report.getReportId());
-        lab.setReportIds(reportIds);
-        stub.putStringState(labKey, gson.toJson(lab));
+        return report;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getLabReport(Context ctx, String reportId) {
-        String key = "REPORT_" + reportId;
-        String json = ctx.getStub().getStringState(key);
+    public LabReport readLabReport(Context ctx, String reportId) {
+        String json = ctx.getStub().getStringState(reportId);
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Report not found: " + reportId);
+            throw new ChaincodeException("Report not found: " + reportId);
         }
-        return json;
+        return gson.fromJson(json, LabReport.class);
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public LabReport updateLabReport(Context ctx, String reportId, String testType,
+                                     String testResult, String testDate, String remarks) {
+        LabReport report = readLabReport(ctx, reportId);
+        report.setTestType(testType);
+        report.setTestResult(testResult);
+        report.setTestDate(testDate);
+        report.setRemarks(remarks);
+
+        ctx.getStub().putStringState(reportId, gson.toJson(report));
+        return report;
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public String deleteLabReport(Context ctx, String reportId) {
+        ChaincodeStub stub = ctx.getStub();
+        LabReport report = readLabReport(ctx, reportId);
+
+        String labId = report.getLabId();
+        String labJSON = stub.getStringState(labId);
+        if (labJSON != null && !labJSON.isEmpty()) {
+            Lab lab = gson.fromJson(labJSON, Lab.class);
+            lab.getReportIds().remove(reportId);
+            stub.putStringState(labId, gson.toJson(lab));
+        }
+
+        stub.delState(reportId);
+        return "Deleted report with ID: " + reportId;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getAllLabReports(Context ctx) {
+    public List<LabReport> getAllLabReports(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         List<LabReport> reports = new ArrayList<>();
 
-        String startKey = "REPORT_";
-        String endKey = "REPORT_\uFFFF";
-
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(startKey, endKey)) {
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
             for (KeyValue kv : results) {
                 try {
                     LabReport report = gson.fromJson(kv.getStringValue(), LabReport.class);
                     if (report != null && report.getReportId() != null) {
                         reports.add(report);
                     }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("Skipping invalid report JSON");
+                } catch (JsonSyntaxException ignored) {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ChaincodeException(e.getMessage());
         }
 
-        return gson.toJson(reports);
+        return reports;
+    }
+
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Lab addReportToLab(Context ctx, String labId, String reportId) {
+        ChaincodeStub stub = ctx.getStub();
+
+        Lab lab = readLab(ctx, labId);
+        LabReport report = readLabReport(ctx, reportId);
+
+        if (!lab.getReportIds().contains(reportId)) {
+            lab.getReportIds().add(reportId);
+        }
+        report.setLabId(labId);
+
+        stub.putStringState(labId, gson.toJson(lab));
+        stub.putStringState(reportId, gson.toJson(report));
+
+        return lab;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void updateLabReport(Context ctx, String reportJson) {
+    public String addLabToHospital(Context ctx, String hospitalId, String labId) {
         ChaincodeStub stub = ctx.getStub();
-        LabReport report = gson.fromJson(reportJson, LabReport.class);
 
-        String key = "REPORT_" + report.getReportId();
-        if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Report not found: " + report.getReportId());
+        String hospitalJSON = stub.getStringState(hospitalId);
+        if (hospitalJSON == null || hospitalJSON.isEmpty()) {
+            throw new ChaincodeException("Hospital not found: " + hospitalId);
         }
 
-        stub.putStringState(key, gson.toJson(report));
-    }
+        Hospital hospital = gson.fromJson(hospitalJSON, Hospital.class);
+        Lab lab = readLab(ctx, labId);
 
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void deleteLabReport(Context ctx, String reportId) {
-        ChaincodeStub stub = ctx.getStub();
-        String key = "REPORT_" + reportId;
-        String json = stub.getStringState(key);
-
-        if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Report not found: " + reportId);
+        if (!hospital.getLabId().contains(labId)) {
+            hospital.getLabId().add(labId);
         }
 
-        LabReport report = gson.fromJson(json, LabReport.class);
-        String labKey = "LAB_" + report.getLabId();
-        String labJson = stub.getStringState(labKey);
-        if (labJson != null && !labJson.isEmpty()) {
-            Lab lab = gson.fromJson(labJson, Lab.class);
-            List<String> reports = lab.getReportIds();
-            if (reports != null) {
-                reports.remove(reportId);
-                lab.setReportIds(reports);
-                stub.putStringState(labKey, gson.toJson(lab));
-            }
-        }
+        stub.putStringState(hospitalId, gson.toJson(hospital));
+        stub.putStringState(labId, gson.toJson(lab));
 
-        stub.delState(key);
+        return "Added Lab " + labId + " to Hospital " + hospitalId;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getReportsByLab(Context ctx, String labId) {
+    public List<LabReport> getReportsByPatient(Context ctx, String patientId) {
         ChaincodeStub stub = ctx.getStub();
-        List<LabReport> reports = new ArrayList<>();
-
-        String startKey = "REPORT_";
-        String endKey = "REPORT_\uFFFF";
-
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(startKey, endKey)) {
-            for (KeyValue kv : results) {
-                try {
-                    LabReport report = gson.fromJson(kv.getStringValue(), LabReport.class);
-                    if (report != null && labId.equals(report.getLabId())) {
-                        reports.add(report);
-                    }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("Skipping invalid report during relation fetch");
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        return gson.toJson(reports);
-    }
-
-    @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getReportsByPatient(Context ctx, String patientId) throws Exception {
-        ChaincodeStub stub = ctx.getStub();
-        List<LabReport> reports = new ArrayList<>();
-
-        String startKey = "REPORT_";
-        String endKey = "REPORT_\uFFFF";
-
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(startKey, endKey)) {
-            for (KeyValue kv : results) {
-                try {
-                    LabReport report = gson.fromJson(kv.getStringValue(), LabReport.class);
-                    if (report != null && patientId.equals(report.getPatientId())) {
-                        reports.add(report);
-                    }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("Skipping invalid report during patient search");
-                }
-            }
-        }
-
-        return gson.toJson(reports);
-    }
-
-    @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getLabReportsByPatientId(Context ctx, String patientId) throws Exception {
-        ChaincodeStub stub = ctx.getStub();
-        Gson gson = new Gson();
         List<LabReport> reports = new ArrayList<>();
 
         try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
@@ -279,14 +229,13 @@ public class LabContract {
                     if (report != null && patientId.equals(report.getPatientId())) {
                         reports.add(report);
                     }
-                } catch (JsonSyntaxException e) {
-                    System.out.println("error in parsing json");
+                } catch (JsonSyntaxException ignored) {
                 }
             }
+        } catch (Exception e) {
+            throw new ChaincodeException(e.getMessage());
         }
 
-        return gson.toJson(reports);
+        return reports;
     }
-
 }
-

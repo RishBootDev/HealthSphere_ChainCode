@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,6 +51,18 @@ public class Patient {
     @Property
     @SerializedName("allergies")
     private String allergies;
+
+    @Property
+    @SerializedName("prescriptionIds")
+    List<String> prescriptionsIds=new ArrayList<>();
+
+    @Property
+    @SerializedName("recordIds")
+    List<String> recordIds=new ArrayList<>();
+
+    @Property
+    @SerializedName("doctorId")
+    private String doctorId;
 
     @Property
     @SerializedName("hospitalId")
