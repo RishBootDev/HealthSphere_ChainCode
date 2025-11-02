@@ -1,4 +1,3 @@
-
 package org.rishbootdev.chaincode.contracts;
 
 import com.google.gson.Gson;

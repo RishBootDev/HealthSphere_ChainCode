@@ -1,5 +1,6 @@
 package org.rishbootdev;
 
+import org.hyperledger.fabric.contract.ContractRouter;
 import org.hyperledger.fabric.shim.*;
 
 import java.io.IOException;
@@ -7,9 +8,10 @@ import java.io.IOException;
 import java.util.List;
 
 public class App extends ChaincodeBase {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws Exception {
 
         App chaincode = new App();
+        ContractRouter.main(args);
 
         chaincode.start(args);
 

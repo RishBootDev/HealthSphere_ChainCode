@@ -4,11 +4,13 @@ import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@DataType
 public class LabReport {
 
     @Property
