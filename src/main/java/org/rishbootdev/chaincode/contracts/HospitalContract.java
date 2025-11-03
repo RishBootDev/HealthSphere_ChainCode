@@ -18,7 +18,7 @@ import java.util.List;
         info = @Info(
                 title = "Hospital Contract",
                 description = "Manages Hospital records and relationships with Doctors, Patients, Labs, and Records",
-                version = "1.0.0"
+                version = "1.1.0"
         )
 )
 @Default
@@ -34,23 +34,36 @@ public class HospitalContract {
 
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Hospital createHospital(Context ctx, String hospitalId, String name, String address,String license) {
+    public Hospital createHospital(Context ctx, String hospitalId, String name, String address, String license) {
         ChaincodeStub stub = ctx.getStub();
-        if (stub.getStringState(hospitalId) != null && !stub.getStringState(hospitalId).isEmpty()) {
+        String key = HOSP_PREFIX + hospitalId;
+
+        String existing = stub.getStringState(key);
+        if (existing != null && !existing.isEmpty()) {
             throw new ChaincodeException("Hospital already exists with ID: " + hospitalId);
         }
-        Hospital hospital = new Hospital(hospitalId,name,address,license,
-                new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 
-        stub.putStringState(hospitalId, gson.toJson(hospital));
+        Hospital hospital = new Hospital(
+                hospitalId,
+                name,
+                address,
+                license,
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>()
+        );
+
+        stub.putStringState(key, gson.toJson(hospital));
         return hospital;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public Hospital readHospital(Context ctx, String hospitalId) {
         ChaincodeStub stub = ctx.getStub();
-        String hospitalJSON = stub.getStringState(hospitalId);
+        String key = HOSP_PREFIX + hospitalId;
 
+        String hospitalJSON = stub.getStringState(key);
         if (hospitalJSON == null || hospitalJSON.isEmpty()) {
             throw new ChaincodeException("Hospital not found: " + hospitalId);
         }
@@ -60,21 +73,22 @@ public class HospitalContract {
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public Hospital updateHospital(Context ctx, String hospitalId, String name, String address) {
+        ChaincodeStub stub = ctx.getStub();
+        String key = HOSP_PREFIX + hospitalId;
+
         Hospital hospital = readHospital(ctx, hospitalId);
         hospital.setName(name);
         hospital.setAddress(address);
 
-        ctx.getStub().putStringState(hospitalId, gson.toJson(hospital));
+        stub.putStringState(key, gson.toJson(hospital));
         return hospital;
     }
-
-
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public Hospital addDoctorToHospital(Context ctx, String hospitalId, String doctorId) {
         ChaincodeStub stub = ctx.getStub();
 
         Hospital hospital = readHospital(ctx, hospitalId);
-        String doctorJSON = stub.getStringState(doctorId);
+        String doctorJSON = stub.getStringState(DOCTOR_PREFIX + doctorId);
 
         if (doctorJSON == null || doctorJSON.isEmpty()) {
             throw new ChaincodeException("Doctor not found: " + doctorId);
@@ -86,8 +100,9 @@ public class HospitalContract {
             hospital.getDoctorIds().add(doctorId);
         }
         doctor.setHospitalId(hospitalId);
-        stub.putStringState(hospitalId, gson.toJson(hospital));
-        stub.putStringState(doctorId, gson.toJson(doctor));
+
+        stub.putStringState(HOSP_PREFIX + hospitalId, gson.toJson(hospital));
+        stub.putStringState(DOCTOR_PREFIX + doctorId, gson.toJson(doctor));
 
         return hospital;
     }
@@ -97,7 +112,7 @@ public class HospitalContract {
         ChaincodeStub stub = ctx.getStub();
 
         Hospital hospital = readHospital(ctx, hospitalId);
-        String patientJSON = stub.getStringState(patientId);
+        String patientJSON = stub.getStringState(PATIENT_PREFIX + patientId);
 
         if (patientJSON == null || patientJSON.isEmpty()) {
             throw new ChaincodeException("Patient not found: " + patientId);
@@ -110,8 +125,8 @@ public class HospitalContract {
         }
         patient.setHospitalId(hospitalId);
 
-        stub.putStringState(hospitalId, gson.toJson(hospital));
-        stub.putStringState(patientId, gson.toJson(patient));
+        stub.putStringState(HOSP_PREFIX + hospitalId, gson.toJson(hospital));
+        stub.putStringState(PATIENT_PREFIX + patientId, gson.toJson(patient));
 
         return hospital;
     }
@@ -121,7 +136,7 @@ public class HospitalContract {
         ChaincodeStub stub = ctx.getStub();
 
         Hospital hospital = readHospital(ctx, hospitalId);
-        String recordJSON = stub.getStringState(recordId);
+        String recordJSON = stub.getStringState(RECORD_PREFIX + recordId);
 
         if (recordJSON == null || recordJSON.isEmpty()) {
             throw new ChaincodeException("Record not found: " + recordId);
@@ -129,13 +144,13 @@ public class HospitalContract {
 
         Record record = gson.fromJson(recordJSON, Record.class);
 
-        if (!hospital.getRecordId().contains(recordId)) {
-            hospital.getRecordId().add(recordId);
+        if (!hospital.getRecordIds().contains(recordId)) {
+            hospital.getRecordIds().add(recordId);
         }
         record.setHospitalId(hospitalId);
 
-        stub.putStringState(hospitalId, gson.toJson(hospital));
-        stub.putStringState(recordId, gson.toJson(record));
+        stub.putStringState(HOSP_PREFIX + hospitalId, gson.toJson(hospital));
+        stub.putStringState(RECORD_PREFIX + recordId, gson.toJson(record));
 
         return hospital;
     }
@@ -144,66 +159,87 @@ public class HospitalContract {
     public Hospital addLabToHospital(Context ctx, String hospitalId, String labId) {
         ChaincodeStub stub = ctx.getStub();
 
-        Hospital hospital = readHospital(ctx, hospitalId);
-        String labJSON = stub.getStringState(labId);
+        String hospitalKey = HOSP_PREFIX + hospitalId;
+        String labKey = LAB_PREFIX + labId;
 
+        String hospitalJSON = stub.getStringState(hospitalKey);
+        if (hospitalJSON == null || hospitalJSON.isEmpty()) {
+            throw new ChaincodeException("Hospital not found: " + hospitalId);
+        }
+        Hospital hospital = gson.fromJson(hospitalJSON, Hospital.class);
+
+        String labJSON = stub.getStringState(labKey);
         if (labJSON == null || labJSON.isEmpty()) {
             throw new ChaincodeException("Lab not found: " + labId);
         }
         Lab lab = gson.fromJson(labJSON, Lab.class);
-        if (!hospital.getLabId().contains(labId)) {
-            hospital.getLabId().add(labId);
+
+        if (!hospital.getLabIds().contains(labId)) {
+            hospital.getLabIds().add(labId);
         }
-        stub.putStringState(hospitalId, gson.toJson(hospital));
-        stub.putStringState(labId, gson.toJson(lab));
+
+        lab.setHospitalId(hospitalId);
+        stub.putStringState(hospitalKey, gson.toJson(hospital));
+        stub.putStringState(labKey, gson.toJson(lab));
+
         return hospital;
     }
 
+
+
+    // ============================================================
+    // ===============  DUPLICATE METHODS (KEPT)  =================
+    // ============================================================
+
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void createHospital(Context ctx, String hospitalJson) {
+    public void createHospitalBody(Context ctx, String hospitalJson) {
         ChaincodeStub stub = ctx.getStub();
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
+
         if (hospital.getHospitalId() == null || hospital.getHospitalId().isEmpty()) {
-            throw new RuntimeException("Hospital ID cannot be empty");
+            throw new ChaincodeException("Hospital ID cannot be empty");
         }
 
         String key = HOSP_PREFIX + hospital.getHospitalId();
-        if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Hospital already exists: " + hospital.getHospitalId());
+        String existing = stub.getStringState(key);
+        if (existing != null && !existing.isEmpty()) {
+            throw new ChaincodeException("Hospital already exists: " + hospital.getHospitalId());
         }
+
         stub.putStringState(key, gson.toJson(hospital));
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getHospital(Context ctx, String hospitalId) {
+    public String getHospitalById(Context ctx, String hospitalId) {
         String state = ctx.getStub().getStringState(HOSP_PREFIX + hospitalId);
         if (state == null || state.isEmpty()) {
-            throw new RuntimeException("Hospital not found: " + hospitalId);
+            throw new ChaincodeException("Hospital not found: " + hospitalId);
         }
         return state;
     }
 
-
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void updateHospital(Context ctx, String hospitalJson) {
+    public void updateHospitalBody(Context ctx, String hospitalJson) {
         ChaincodeStub stub = ctx.getStub();
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
 
         String key = HOSP_PREFIX + hospital.getHospitalId();
-        if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Hospital not found: " + hospital.getHospitalId());
+        String existing = stub.getStringState(key);
+        if (existing == null || existing.isEmpty()) {
+            throw new ChaincodeException("Hospital not found: " + hospital.getHospitalId());
         }
 
         stub.putStringState(key, gson.toJson(hospital));
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void deleteHospital(Context ctx, String hospitalId) {
+    public void deleteHospitalById(Context ctx, String hospitalId) {
         ChaincodeStub stub = ctx.getStub();
         String key = HOSP_PREFIX + hospitalId;
 
-        if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Hospital not found: " + hospitalId);
+        String existing = stub.getStringState(key);
+        if (existing == null || existing.isEmpty()) {
+            throw new ChaincodeException("Hospital not found: " + hospitalId);
         }
 
         stub.delState(key);
@@ -222,7 +258,7 @@ public class HospitalContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving hospitals: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving hospitals: " + e.getMessage());
         }
 
         return gson.toJson(hospitals);
@@ -241,7 +277,7 @@ public class HospitalContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving doctors: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving doctors: " + e.getMessage());
         }
         return gson.toJson(doctors);
     }
@@ -259,7 +295,7 @@ public class HospitalContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving patients: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving patients: " + e.getMessage());
         }
         return gson.toJson(patients);
     }
@@ -277,7 +313,7 @@ public class HospitalContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving labs: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving labs: " + e.getMessage());
         }
         return gson.toJson(labs);
     }
@@ -295,7 +331,7 @@ public class HospitalContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving records: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving records: " + e.getMessage());
         }
         return gson.toJson(records);
     }
@@ -306,12 +342,13 @@ public class HospitalContract {
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
 
         if (hospital.getHospitalId() == null || hospital.getHospitalId().isEmpty()) {
-            throw new RuntimeException("Hospital ID cannot be empty");
+            throw new ChaincodeException("Hospital ID cannot be empty");
         }
 
         String key = HOSP_PREFIX + hospital.getHospitalId();
-        if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Hospital already exists: " + hospital.getHospitalId());
+        String existing = stub.getStringState(key);
+        if (existing != null && !existing.isEmpty()) {
+            throw new ChaincodeException("Hospital already exists: " + hospital.getHospitalId());
         }
 
         stub.putStringState(key, gson.toJson(hospital));
@@ -333,10 +370,9 @@ public class HospitalContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving hospital patients: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving hospital patients: " + e.getMessage());
         }
 
         return gson.toJson(patients);
     }
 }
-

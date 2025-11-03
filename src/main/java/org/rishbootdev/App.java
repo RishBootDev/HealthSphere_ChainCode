@@ -39,7 +39,7 @@ public class App extends ChaincodeBase {
             case "ping":
                 return newSuccessResponse("PONG: Chaincode is active and responding");
             case "healthCheck":
-                return newSuccessResponse("✅ Blockchain healthcare system operational");
+                return newSuccessResponse("Blockchain healthcare system operational");
             default:
                 return newErrorResponse("Invalid function name or contract not found: " + function);
         }

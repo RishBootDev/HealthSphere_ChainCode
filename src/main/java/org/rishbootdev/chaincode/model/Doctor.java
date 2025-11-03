@@ -30,15 +30,15 @@ public class Doctor {
     private String hospitalId;
     @Property
     @SerializedName("patientId")
-    private List<String> patientId=new ArrayList<>();
+    private List<String> patientIds=new ArrayList<>();
 
     @Property
     @SerializedName("recordId")
-    private List<String> recordId=new ArrayList<>();
+    private List<String> recordIds=new ArrayList<>();
     @Property
     @SerializedName("qualification")
     private String qualification;
-    @Property()
+    @Property
     @SerializedName("contact")
     private String contact;
 }

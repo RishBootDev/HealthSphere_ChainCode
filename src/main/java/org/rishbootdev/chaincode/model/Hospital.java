@@ -37,8 +37,8 @@ public class Hospital {
     private List<String> patientIds=new ArrayList<>();
     @Property
     @SerializedName("recordId")
-    private List<String> recordId=new ArrayList<>();
+    private List<String> recordIds=new ArrayList<>();
     @Property
     @SerializedName("labId")
-    private List<String> labId=new ArrayList<>();
+    private List<String> labIds=new ArrayList<>();
 }

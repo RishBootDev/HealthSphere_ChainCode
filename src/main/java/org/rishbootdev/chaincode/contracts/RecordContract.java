@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Transaction;
+import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
@@ -81,6 +82,7 @@ public class RecordContract {
         String patientId = record.getPatientId();
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
+
         if (patientJson != null && !patientJson.isEmpty()) {
             Patient patient = gson.fromJson(patientJson, Patient.class);
             if (patient.getRecordIds() != null && patient.getRecordIds().remove(recordId))
@@ -142,7 +144,7 @@ public class RecordContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error searching records: " + e.getMessage());
+            throw new ChaincodeException("Error searching records: " + e.getMessage());
         }
         return gson.toJson(matched);
     }
@@ -160,7 +162,7 @@ public class RecordContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching prescriptions: " + e.getMessage());
+            throw new ChaincodeException("Error fetching prescriptions: " + e.getMessage());
         }
         return gson.toJson(prescriptions);
     }

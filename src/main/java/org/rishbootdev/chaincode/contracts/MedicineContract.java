@@ -9,6 +9,7 @@ import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
+import org.hyperledger.fabric.shim.ChaincodeException;
 import org.rishbootdev.chaincode.model.Medicine;
 import org.rishbootdev.chaincode.model.Pharma;
 
@@ -20,102 +21,109 @@ import java.util.List;
 public class MedicineContract {
 
     private final Gson gson = new Gson();
+    private static final String MED_PREFIX = "MEDICINE_";
+    private static final String PHARMA_PREFIX = "PHARMA_";
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void createMedicine(Context ctx, String medicineJson) {
+    public Medicine createMedicine(Context ctx, String medicineJson) {
         ChaincodeStub stub = ctx.getStub();
         Medicine medicine = gson.fromJson(medicineJson, Medicine.class);
+        String key = MED_PREFIX + medicine.getId();
 
         if (medicine.getId() == null || medicine.getId().isEmpty()) {
-            throw new RuntimeException("Medicine ID cannot be empty");
+            throw new ChaincodeException("Medicine ID cannot be empty");
         }
-        if (!stub.getStringState(medicine.getId()).isEmpty()) {
-            throw new RuntimeException("Medicine already exists: " + medicine.getId());
+        if (!stub.getStringState(key).isEmpty()) {
+            throw new ChaincodeException("Medicine already exists: " + medicine.getId());
         }
-        stub.putStringState(medicine.getId(), gson.toJson(medicine));
+
+        stub.putStringState(key, gson.toJson(medicine));
+        return medicine;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String readMedicine(Context ctx, String medicineId) {
-        String json = ctx.getStub().getStringState(medicineId);
+    public Medicine readMedicine(Context ctx, String medicineId) {
+        String key = MED_PREFIX + medicineId;
+        String json = ctx.getStub().getStringState(key);
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
-        return json;
+        return gson.fromJson(json, Medicine.class);
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getAllMedicines(Context ctx) {
+    public List<Medicine> getAllMedicines(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         List<Medicine> medicines = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(MED_PREFIX, MED_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 try {
                     Medicine med = gson.fromJson(kv.getStringValue(), Medicine.class);
-                    if (med != null && med.getId() != null && !med.getId().isEmpty()) {
+                    if (med != null && med.getId() != null) {
                         medicines.add(med);
                     }
-                } catch (JsonSyntaxException ex) {
-                    System.out.println("Skipping invalid Medicine JSON: " + ex.getMessage());
-                }
+                } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error reading Medicines from ledger: " + e.getMessage());
+            throw new ChaincodeException(e.getMessage());
         }
-
-        return gson.toJson(medicines);
+        return medicines;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void updateMedicine(Context ctx, String medicineJson) {
+    public Medicine updateMedicine(Context ctx, String medicineJson) {
         ChaincodeStub stub = ctx.getStub();
         Medicine medicine = gson.fromJson(medicineJson, Medicine.class);
+        String key = MED_PREFIX + medicine.getId();
 
         if (medicine.getId() == null || medicine.getId().isEmpty()) {
-            throw new RuntimeException("Medicine ID cannot be empty");
+            throw new ChaincodeException("Medicine ID cannot be empty");
         }
-
-        String existing = stub.getStringState(medicine.getId());
+        String existing = stub.getStringState(key);
         if (existing == null || existing.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicine.getId());
+            throw new ChaincodeException("Medicine not found: " + medicine.getId());
         }
 
-        stub.putStringState(medicine.getId(), gson.toJson(medicine));
+        stub.putStringState(key, gson.toJson(medicine));
+        return medicine;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void deleteMedicine(Context ctx, String medicineId) {
+    public String deleteMedicine(Context ctx, String medicineId) {
         ChaincodeStub stub = ctx.getStub();
-        String existing = stub.getStringState(medicineId);
+        String key = MED_PREFIX + medicineId;
+        String existing = stub.getStringState(key);
 
         if (existing == null || existing.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
 
-        // Remove medicine from any Pharma relationships
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PHARMA_PREFIX, PHARMA_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 try {
                     Pharma pharma = gson.fromJson(kv.getStringValue(), Pharma.class);
-                    if (pharma != null && pharma.getMedicineId() != null &&
-                            pharma.getMedicineId().contains(medicineId)) {
-                        pharma.getMedicineId().remove(medicineId);
-                        stub.putStringState(pharma.getPharmaId(), gson.toJson(pharma));
+                    if (pharma != null && pharma.getMedicineIds() != null &&
+                            pharma.getMedicineIds().contains(medicineId)) {
+                        pharma.getMedicineIds().remove(medicineId);
+                        stub.putStringState(PHARMA_PREFIX + pharma.getPharmaId(), gson.toJson(pharma));
                     }
                 } catch (Exception ignored) {}
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            throw new ChaincodeException(e.getMessage());
+        }
 
-        stub.delState(medicineId);
+        stub.delState(key);
+        return "Deleted Medicine " + medicineId;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String searchMedicineByName(Context ctx, String name) throws Exception {
+    public List<Medicine> searchMedicineByName(Context ctx, String name) throws Exception {
         ChaincodeStub stub = ctx.getStub();
         List<Medicine> found = new ArrayList<>();
 
-        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange("", "")) {
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(MED_PREFIX, MED_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 try {
                     Medicine med = gson.fromJson(kv.getStringValue(), Medicine.class);
@@ -123,90 +131,93 @@ public class MedicineContract {
                             med.getName().equalsIgnoreCase(name)) {
                         found.add(med);
                     }
-                } catch (Exception ex) {
-                    System.out.println("Skipping malformed record: " + ex.getMessage());
-                }
+                } catch (Exception ignored) {}
             }
         }
-
         if (found.isEmpty()) {
-            throw new RuntimeException("No medicine found with name: " + name);
+            throw new ChaincodeException("No medicine found with name: " + name);
         }
-
-        return gson.toJson(found);
+        return found;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void updateMedicineStock(Context ctx, String medicineId, int newStock) {
+    public Medicine updateMedicineStock(Context ctx, String medicineId, int newStock) {
         ChaincodeStub stub = ctx.getStub();
-        String json = stub.getStringState(medicineId);
+        String key = MED_PREFIX + medicineId;
+        String json = stub.getStringState(key);
 
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
 
         Medicine med = gson.fromJson(json, Medicine.class);
         med.setStock(newStock);
-        stub.putStringState(medicineId, gson.toJson(med));
+        stub.putStringState(key, gson.toJson(med));
+        return med;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void addMedicineToPharma(Context ctx, String pharmaId, String medicineId) {
+    public Pharma addMedicineToPharma(Context ctx, String pharmaId, String medicineId) {
         ChaincodeStub stub = ctx.getStub();
 
-        String pharmaJson = stub.getStringState(pharmaId);
+        String pharmaKey = PHARMA_PREFIX + pharmaId;
+        String medKey = MED_PREFIX + medicineId;
+
+        String pharmaJson = stub.getStringState(pharmaKey);
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
 
-        String medJson = stub.getStringState(medicineId);
+        String medJson = stub.getStringState(medKey);
         if (medJson == null || medJson.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
 
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
-        List<String> meds = pharma.getMedicineId();
-        if (!meds.contains(medicineId)) {
-            meds.add(medicineId);
+        if (!pharma.getMedicineIds().contains(medicineId)) {
+            pharma.getMedicineIds().add(medicineId);
         }
 
-        stub.putStringState(pharmaId, gson.toJson(pharma));
+        stub.putStringState(pharmaKey, gson.toJson(pharma));
+        return pharma;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void removeMedicineFromPharma(Context ctx, String pharmaId, String medicineId) {
+    public Pharma removeMedicineFromPharma(Context ctx, String pharmaId, String medicineId) {
         ChaincodeStub stub = ctx.getStub();
-        String pharmaJson = stub.getStringState(pharmaId);
+        String pharmaKey = PHARMA_PREFIX + pharmaId;
+        String pharmaJson = stub.getStringState(pharmaKey);
 
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
 
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
-        List<String> meds = pharma.getMedicineId();
-        meds.remove(medicineId);
-        stub.putStringState(pharmaId, gson.toJson(pharma));
+        pharma.getMedicineIds().remove(medicineId);
+        stub.putStringState(pharmaKey, gson.toJson(pharma));
+        return pharma;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String getMedicinesByPharma(Context ctx, String pharmaId) {
+    public List<Medicine> getMedicinesByPharma(Context ctx, String pharmaId) {
         ChaincodeStub stub = ctx.getStub();
-        String pharmaJson = stub.getStringState(pharmaId);
+        String pharmaKey = PHARMA_PREFIX + pharmaId;
+        String pharmaJson = stub.getStringState(pharmaKey);
 
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
 
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         List<Medicine> medicines = new ArrayList<>();
 
-        for (String medId : pharma.getMedicineId()) {
-            String medJson = stub.getStringState(medId);
+        for (String medId : pharma.getMedicineIds()) {
+            String medJson = stub.getStringState(MED_PREFIX + medId);
             if (medJson != null && !medJson.isEmpty()) {
                 medicines.add(gson.fromJson(medJson, Medicine.class));
             }
         }
 
-        return gson.toJson(medicines);
+        return medicines;
     }
 }

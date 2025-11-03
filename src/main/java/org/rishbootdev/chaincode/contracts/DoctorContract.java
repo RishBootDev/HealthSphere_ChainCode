@@ -3,6 +3,7 @@ package org.rishbootdev.chaincode.contracts;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.rishbootdev.chaincode.model.Doctor;
 import org.rishbootdev.chaincode.model.Patient;
 import org.rishbootdev.chaincode.model.Record;
@@ -16,7 +17,14 @@ import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "DoctorContract")
+@Contract(
+        name = "DoctorContract",
+        info = @Info(
+                title = "Doctor Contract",
+                description = "Manages relationships between Patients",
+                version = "1.0.0"
+        )
+)
 @Default
 public class DoctorContract {
 
@@ -39,8 +47,8 @@ public class DoctorContract {
             throw new RuntimeException("Doctor already exists: " + doctor.getDoctorId());
         }
 
-        if (doctor.getPatientId() == null) doctor.setPatientId(new ArrayList<>());
-        if (doctor.getRecordId() == null) doctor.setRecordId(new ArrayList<>());
+        if (doctor.getPatientIds() == null) doctor.setPatientIds(new ArrayList<>());
+        if (doctor.getRecordIds() == null) doctor.setRecordIds(new ArrayList<>());
 
         stub.putStringState(key, gson.toJson(doctor));
     }
@@ -64,8 +72,8 @@ public class DoctorContract {
             throw new RuntimeException("Doctor not found: " + doctor.getDoctorId());
         }
 
-        if (doctor.getPatientId() == null) doctor.setPatientId(new ArrayList<>());
-        if (doctor.getRecordId() == null) doctor.setRecordId(new ArrayList<>());
+        if (doctor.getPatientIds() == null) doctor.setPatientIds(new ArrayList<>());
+        if (doctor.getRecordIds() == null) doctor.setRecordIds(new ArrayList<>());
 
         stub.putStringState(key, gson.toJson(doctor));
         return "Doctor updated: " + doctor.getDoctorId();
@@ -162,8 +170,8 @@ public class DoctorContract {
         doctor.setName(name);
         doctor.setSpecialization(specialization);
         doctor.setHospitalId(hospitalId);
-        doctor.setPatientId(new ArrayList<>());
-        doctor.setRecordId(new ArrayList<>());
+        doctor.setPatientIds(new ArrayList<>());
+        doctor.setRecordIds(new ArrayList<>());
         doctor.setQualification(qualification);
         doctor.setContact(contact);
 
@@ -186,9 +194,9 @@ public class DoctorContract {
             throw new RuntimeException("Doctor not found: " + doctorId);
         }
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
-        if (doctor.getPatientId() == null) doctor.setPatientId(new ArrayList<>());
-        if (!doctor.getPatientId().contains(patientId)) {
-            doctor.getPatientId().add(patientId);
+        if (doctor.getPatientIds() == null) doctor.setPatientIds(new ArrayList<>());
+        if (!doctor.getPatientIds().contains(patientId)) {
+            doctor.getPatientIds().add(patientId);
             stub.putStringState(doctorKey, gson.toJson(doctor));
         }
 
@@ -212,7 +220,7 @@ public class DoctorContract {
             throw new RuntimeException("Doctor not found: " + doctorId);
         }
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
-        if (doctor.getPatientId() != null && doctor.getPatientId().remove(patientId)) {
+        if (doctor.getPatientIds() != null && doctor.getPatientIds().remove(patientId)) {
             stub.putStringState(doctorKey, gson.toJson(doctor));
         }
 
@@ -237,9 +245,9 @@ public class DoctorContract {
             throw new RuntimeException("Doctor not found: " + doctorId);
         }
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
-        if (doctor.getRecordId() == null) doctor.setRecordId(new ArrayList<>());
-        if (!doctor.getRecordId().contains(recordId)) {
-            doctor.getRecordId().add(recordId);
+        if (doctor.getRecordIds() == null) doctor.setRecordIds(new ArrayList<>());
+        if (!doctor.getRecordIds().contains(recordId)) {
+            doctor.getRecordIds().add(recordId);
             stub.putStringState(doctorKey, gson.toJson(doctor));
         }
     }
@@ -253,8 +261,75 @@ public class DoctorContract {
             throw new RuntimeException("Doctor not found: " + doctorId);
         }
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
-        if (doctor.getRecordId() != null && doctor.getRecordId().remove(recordId)) {
+        if (doctor.getRecordIds() != null && doctor.getRecordIds().remove(recordId)) {
             stub.putStringState(doctorKey, gson.toJson(doctor));
         }
     }
+
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public String getAllDoctorsFast(Context ctx) {
+        ChaincodeStub stub = ctx.getStub();
+        List<Doctor> doctors = new ArrayList<>();
+
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(DOCTOR_PREFIX, DOCTOR_PREFIX + "~")) {
+            for (KeyValue kv : results) {
+                try {
+                    Doctor doc = gson.fromJson(kv.getStringValue(), Doctor.class);
+                    if (doc != null && doc.getDoctorId() != null) {
+                        doctors.add(doc);
+                    }
+                } catch (JsonSyntaxException ignore) {}
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching doctors: " + e.getMessage());
+        }
+
+        return gson.toJson(doctors);
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public String GetRecordsByDoctorFast(Context ctx, String doctorId) {
+        ChaincodeStub stub = ctx.getStub();
+        List<Record> records = new ArrayList<>();
+
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(RECORD_PREFIX, RECORD_PREFIX + "~")) {
+            for (KeyValue kv : results) {
+                try {
+                    Record record = gson.fromJson(kv.getStringValue(), Record.class);
+                    if (record != null && doctorId.equals(record.getDoctorId())) {
+                        records.add(record);
+                    }
+                } catch (JsonSyntaxException ignore) {}
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching records: " + e.getMessage());
+        }
+
+        return gson.toJson(records);
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public String GetPatientsByDoctorFast(Context ctx, String doctorId) {
+        ChaincodeStub stub = ctx.getStub();
+        List<Patient> patients = new ArrayList<>();
+
+        try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(PATIENT_PREFIX, PATIENT_PREFIX + "~")) {
+            for (KeyValue kv : results) {
+                try {
+                    Patient patient = gson.fromJson(kv.getStringValue(), Patient.class);
+                    if (patient != null && doctorId.equals(patient.getDoctorId())) {
+                        patients.add(patient);
+                    }
+                } catch (JsonSyntaxException ignore) {}
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error retrieving patients: " + e.getMessage());
+        }
+
+        return gson.toJson(patients);
+    }
+
+
+
 }

@@ -26,5 +26,5 @@ public class Pharma {
 
     @Property
     @SerializedName("medicineId")
-    private List<String> medicineId=new ArrayList<>();
+    private List<String> medicineIds=new ArrayList<>();
 }

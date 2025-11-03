@@ -6,6 +6,7 @@ import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Transaction;
+import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
@@ -32,12 +33,12 @@ public class PrescriptionContract {
         Prescription prescription = gson.fromJson(prescriptionJson, Prescription.class);
 
         if (prescription.getPrescriptionId() == null || prescription.getPrescriptionId().isEmpty()) {
-            throw new RuntimeException("Prescription ID cannot be empty");
+            throw new ChaincodeException("Prescription ID cannot be empty");
         }
 
         String key = PRESC_PREFIX + prescription.getPrescriptionId();
         if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Prescription already exists: " + prescription.getPrescriptionId());
+            throw new ChaincodeException("Prescription already exists: " + prescription.getPrescriptionId());
         }
 
         if (prescription.getMedicineIdList() == null) {
@@ -82,7 +83,6 @@ public class PrescriptionContract {
 
         return gson.toJson(prescriptions);
     }
-
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public String updatePrescription(Context ctx, String prescriptionJson) {
         ChaincodeStub stub = ctx.getStub();
@@ -94,7 +94,7 @@ public class PrescriptionContract {
         }
 
         stub.putStringState(key, gson.toJson(prescription));
-        return "🩺 Prescription updated successfully: " + prescription.getPrescriptionId();
+        return "Prescription updated successfully: " + prescription.getPrescriptionId();
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
@@ -104,25 +104,13 @@ public class PrescriptionContract {
 
         String existing = stub.getStringState(key);
         if (existing == null || existing.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
-        }
-
-        Prescription presc = gson.fromJson(existing, Prescription.class);
-
-        if (presc.getMedicineIdList() != null) {
-            for (String medId : presc.getMedicineIdList()) {
-                String medKey = MEDICINE_PREFIX + medId;
-                String medJson = stub.getStringState(medKey);
-                if (medJson != null && !medJson.isEmpty()) {
-                    Medicine med = gson.fromJson(medJson, Medicine.class);
-                    stub.putStringState(medKey, gson.toJson(med));
-                }
-            }
+            throw new ChaincodeException("Prescription not found: " + prescriptionId);
         }
 
         stub.delState(key);
         return "Prescription deleted: " + prescriptionId;
     }
+
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void addMedicineToPrescription(Context ctx, String prescriptionId, String medicineId) {
@@ -211,7 +199,7 @@ public class PrescriptionContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching prescriptions by patient: " + e.getMessage());
+            throw new ChaincodeException("Error fetching prescriptions by patient: " + e.getMessage());
         }
 
         return gson.toJson(prescriptions);
@@ -231,7 +219,7 @@ public class PrescriptionContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching prescriptions by doctor: " + e.getMessage());
+            throw new ChaincodeException("Error fetching prescriptions by doctor: " + e.getMessage());
         }
 
         return gson.toJson(prescriptions);
@@ -251,7 +239,7 @@ public class PrescriptionContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error searching prescriptions: " + e.getMessage());
+            throw new ChaincodeException("Error searching prescriptions: " + e.getMessage());
         }
 
         return gson.toJson(resultsList);

@@ -24,6 +24,9 @@ public class Lab {
     @SerializedName("name")
     private String name;
     @Property
+    @SerializedName("hospitalId")
+    private String hospitalId;
+    @Property
     @SerializedName("reportIds")
     private List<String> reportIds=new ArrayList<>();
 
