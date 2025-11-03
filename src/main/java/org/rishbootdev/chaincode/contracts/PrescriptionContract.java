@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
@@ -16,7 +17,14 @@ import org.rishbootdev.chaincode.model.Prescription;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "PrescriptionContract")
+@Contract(
+        name = "PrescriptionContract",
+        info = @Info(
+                title = "Prescription Contract",
+                description = "Manages all operations for the Prescription of the doctor to the patient",
+                version = "1.0.0"
+        )
+)
 @Default
 public class PrescriptionContract {
 
@@ -56,7 +64,7 @@ public class PrescriptionContract {
         String json = stub.getStringState(key);
 
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
+            throw new ChaincodeException("Prescription not found: " + prescriptionId);
         }
 
         return json;
@@ -78,7 +86,7 @@ public class PrescriptionContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching prescriptions: " + e.getMessage());
+            throw new ChaincodeException("Error fetching prescriptions: " + e.getMessage());
         }
 
         return gson.toJson(prescriptions);
@@ -90,7 +98,7 @@ public class PrescriptionContract {
 
         String key = PRESC_PREFIX + prescription.getPrescriptionId();
         if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescription.getPrescriptionId());
+            throw new ChaincodeException("Prescription not found: " + prescription.getPrescriptionId());
         }
 
         stub.putStringState(key, gson.toJson(prescription));
@@ -119,13 +127,13 @@ public class PrescriptionContract {
         String prescJson = stub.getStringState(prescKey);
 
         if (prescJson == null || prescJson.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
+            throw new ChaincodeException("Prescription not found: " + prescriptionId);
         }
 
         String medKey = MEDICINE_PREFIX + medicineId;
         String medJson = stub.getStringState(medKey);
         if (medJson == null || medJson.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
 
         Prescription prescription = gson.fromJson(prescJson, Prescription.class);
@@ -146,7 +154,7 @@ public class PrescriptionContract {
         String prescJson = stub.getStringState(prescKey);
 
         if (prescJson == null || prescJson.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
+            throw new ChaincodeException("Prescription not found: " + prescriptionId);
         }
 
         Prescription prescription = gson.fromJson(prescJson, Prescription.class);
@@ -164,7 +172,7 @@ public class PrescriptionContract {
         String prescJson = stub.getStringState(PRESC_PREFIX + prescriptionId);
 
         if (prescJson == null || prescJson.isEmpty()) {
-            throw new RuntimeException("Prescription not found: " + prescriptionId);
+            throw new ChaincodeException("Prescription not found: " + prescriptionId);
         }
 
         Prescription prescription = gson.fromJson(prescJson, Prescription.class);

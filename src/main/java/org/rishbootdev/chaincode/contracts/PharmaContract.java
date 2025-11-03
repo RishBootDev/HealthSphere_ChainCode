@@ -5,7 +5,9 @@ import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
+import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
@@ -14,7 +16,14 @@ import org.rishbootdev.chaincode.model.Pharma;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "PharmaContract")
+@Contract(
+        name = "PharmaContract",
+        info = @Info(
+                title = "Pharma Contract",
+                description = "Manages relationships between medicines",
+                version = "1.0.0"
+        )
+)
 @Default
 public class PharmaContract {
 
@@ -27,11 +36,11 @@ public class PharmaContract {
         ChaincodeStub stub = ctx.getStub();
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         if (pharma.getPharmaId() == null || pharma.getPharmaId().isEmpty()) {
-            throw new RuntimeException("Pharma ID cannot be empty");
+            throw new ChaincodeException("Pharma ID cannot be empty");
         }
         String key = PHARMA_PREFIX + pharma.getPharmaId();
         if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Pharma already exists: " + pharma.getPharmaId());
+            throw new ChaincodeException("Pharma already exists: " + pharma.getPharmaId());
         }
         if (pharma.getMedicineIds() == null) {
             pharma.setMedicineIds(new ArrayList<>());
@@ -44,7 +53,7 @@ public class PharmaContract {
         String key = PHARMA_PREFIX + pharmaId;
         String json = ctx.getStub().getStringState(key);
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
         return json;
     }
@@ -63,7 +72,7 @@ public class PharmaContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving pharmas: " + e.getMessage());
+            throw new ChaincodeException("Error retrieving pharmas: " + e.getMessage());
         }
         return gson.toJson(pharmaList);
     }
@@ -74,7 +83,7 @@ public class PharmaContract {
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         String key = PHARMA_PREFIX + pharma.getPharmaId();
         if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharma.getPharmaId());
+            throw new ChaincodeException("Pharma not found: " + pharma.getPharmaId());
         }
         stub.putStringState(key, gson.toJson(pharma));
     }
@@ -85,7 +94,7 @@ public class PharmaContract {
         String key = PHARMA_PREFIX + pharmaId;
         String json = stub.getStringState(key);
         if (json == null || json.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
         stub.delState(key);
     }
@@ -96,12 +105,12 @@ public class PharmaContract {
         String pharmaKey = PHARMA_PREFIX + pharmaId;
         String pharmaJson = stub.getStringState(pharmaKey);
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
         String medKey = MEDICINE_PREFIX + medicineId;
         String medJson = stub.getStringState(medKey);
         if (medJson == null || medJson.isEmpty()) {
-            throw new RuntimeException("Medicine not found: " + medicineId);
+            throw new ChaincodeException("Medicine not found: " + medicineId);
         }
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         List<String> medList = pharma.getMedicineIds();
@@ -121,7 +130,7 @@ public class PharmaContract {
         String pharmaKey = PHARMA_PREFIX + pharmaId;
         String pharmaJson = stub.getStringState(pharmaKey);
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         List<String> medList = pharma.getMedicineIds();
@@ -137,7 +146,7 @@ public class PharmaContract {
         String pharmaKey = PHARMA_PREFIX + pharmaId;
         String pharmaJson = stub.getStringState(pharmaKey);
         if (pharmaJson == null || pharmaJson.isEmpty()) {
-            throw new RuntimeException("Pharma not found: " + pharmaId);
+            throw new ChaincodeException("Pharma not found: " + pharmaId);
         }
         Pharma pharma = gson.fromJson(pharmaJson, Pharma.class);
         List<String> medicineIds = pharma.getMedicineIds();

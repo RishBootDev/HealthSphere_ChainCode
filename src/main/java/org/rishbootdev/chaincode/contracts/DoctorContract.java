@@ -21,7 +21,7 @@ import java.util.List;
         name = "DoctorContract",
         info = @Info(
                 title = "Doctor Contract",
-                description = "Manages relationships between Patients",
+                description = "Manages relationships between Patients and other relations",
                 version = "1.0.0"
         )
 )

@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
@@ -18,7 +19,14 @@ import org.rishbootdev.chaincode.model.Hospital;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "PatientContract")
+@Contract(
+        name = "PatientContract",
+        info = @Info(
+                title = "Patient Contract",
+                description = "Manages relationships between Patients and all other operations performed on or by the patient",
+                version = "1.0.0"
+        )
+)
 @Default
 public class PatientContract {
 
@@ -34,11 +42,11 @@ public class PatientContract {
         ChaincodeStub stub = ctx.getStub();
         Patient patient = gson.fromJson(patientJson, Patient.class);
         if (patient.getPatientId() == null || patient.getPatientId().isEmpty()) {
-            throw new RuntimeException("Patient ID cannot be empty");
+            throw new ChaincodeException("Patient ID cannot be empty");
         }
         String key = PATIENT_PREFIX + patient.getPatientId();
         if (!stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Patient already exists: " + patient.getPatientId());
+            throw new ChaincodeException("Patient already exists: " + patient.getPatientId());
         }
         stub.putStringState(key, gson.toJson(patient));
     }
@@ -48,7 +56,7 @@ public class PatientContract {
         String key = PATIENT_PREFIX + patientId;
         String state = ctx.getStub().getStringState(key);
         if (state == null || state.isEmpty()) {
-            throw new RuntimeException("Patient not found: " + patientId);
+            throw new ChaincodeException("Patient not found: " + patientId);
         }
         return state;
     }
@@ -59,7 +67,7 @@ public class PatientContract {
         Patient updated = gson.fromJson(patientJson, Patient.class);
         String key = PATIENT_PREFIX + updated.getPatientId();
         if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Patient not found: " + updated.getPatientId());
+            throw new ChaincodeException("Patient not found: " + updated.getPatientId());
         }
         stub.putStringState(key, gson.toJson(updated));
     }
@@ -69,7 +77,7 @@ public class PatientContract {
         ChaincodeStub stub = ctx.getStub();
         String key = PATIENT_PREFIX + patientId;
         if (stub.getStringState(key).isEmpty()) {
-            throw new RuntimeException("Patient not found: " + patientId);
+            throw new ChaincodeException("Patient not found: " + patientId);
         }
         try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(REPORT_PREFIX, REPORT_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
@@ -79,7 +87,7 @@ public class PatientContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error while deleting patient reports: " + e.getMessage());
+            throw new ChaincodeException("Error while deleting patient reports: " + e.getMessage());
         }
         stub.delState(key);
     }
@@ -98,7 +106,7 @@ public class PatientContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching all patients: " + e.getMessage());
+            throw new ChaincodeException("Error fetching all patients: " + e.getMessage());
         }
         return gson.toJson(patients);
     }
@@ -110,8 +118,11 @@ public class PatientContract {
         String doctorKey = DOCTOR_PREFIX + doctorId;
         String patientJson = stub.getStringState(patientKey);
         String doctorJson = stub.getStringState(doctorKey);
-        if (patientJson.isEmpty()) throw new RuntimeException("Patient not found: " + patientId);
-        if (doctorJson.isEmpty()) throw new RuntimeException("Doctor not found: " + doctorId);
+        if (patientJson.isEmpty())
+            throw new ChaincodeException("Patient not found: " + patientId);
+        if (doctorJson.isEmpty())
+            throw new ChaincodeException("Doctor not found: " + doctorId);
+
         Patient patient = gson.fromJson(patientJson, Patient.class);
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
         patient.setDoctorId(doctorId);
@@ -129,7 +140,9 @@ public class PatientContract {
         ChaincodeStub stub = ctx.getStub();
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
-        if (patientJson.isEmpty()) throw new RuntimeException("Patient not found: " + patientId);
+        if (patientJson.isEmpty())
+            throw new ChaincodeException("Patient not found: " + patientId);
+
         Patient patient = gson.fromJson(patientJson, Patient.class);
         String doctorId = patient.getDoctorId();
         if (doctorId != null) {
@@ -152,8 +165,12 @@ public class PatientContract {
         String hospitalKey = HOSPITAL_PREFIX + hospitalId;
         String patientJson = stub.getStringState(patientKey);
         String hospitalJson = stub.getStringState(hospitalKey);
-        if (patientJson.isEmpty()) throw new RuntimeException("Patient not found: " + patientId);
-        if (hospitalJson.isEmpty()) throw new RuntimeException("Hospital not found: " + hospitalId);
+
+        if (patientJson.isEmpty())
+            throw new ChaincodeException("Patient not found: " + patientId);
+        if (hospitalJson.isEmpty())
+            throw new ChaincodeException("Hospital not found: " + hospitalId);
+
         Patient patient = gson.fromJson(patientJson, Patient.class);
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
         patient.setHospitalId(hospitalId);
@@ -172,7 +189,9 @@ public class PatientContract {
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
 
-        if (patientJson.isEmpty()) throw new RuntimeException("Patient not found: " + patientId);
+        if (patientJson.isEmpty())
+            throw new ChaincodeException("Patient not found: " + patientId);
+
         Patient patient = gson.fromJson(patientJson, Patient.class);
 
         String hospitalId = patient.getHospitalId();
@@ -196,7 +215,9 @@ public class PatientContract {
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
 
-        if (patientJson.isEmpty()) throw new RuntimeException("Patient not found: " + patientId);
+        if (patientJson.isEmpty())
+            throw new ChaincodeException("Patient not found: " + patientId);
+
         Patient patient = gson.fromJson(patientJson, Patient.class);
 
         patient.setLabReportId(reportId);
@@ -229,7 +250,7 @@ public class PatientContract {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching reports: " + e.getMessage());
+            throw new ChaincodeException("Error fetching reports: " + e.getMessage());
         }
         return gson.toJson(reports);
     }

@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
+import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
@@ -16,7 +18,15 @@ import org.rishbootdev.chaincode.model.Record;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "RecordContract")
+@Contract(
+        name = "RecordContract",
+        info = @Info(
+                title = "Record Contract",
+                description = "Manages records",
+                version = "1.0.0"
+        )
+)
+@Default
 public class RecordContract {
 
     private final Gson gson = new Gson();
@@ -30,18 +40,18 @@ public class RecordContract {
         Record record = gson.fromJson(recordJson, Record.class);
 
         if (record.getRecordId() == null || record.getRecordId().isEmpty())
-            throw new RuntimeException("Record ID cannot be empty");
+            throw new ChaincodeException("Record ID cannot be empty");
         if (record.getPatientId() == null || record.getPatientId().isEmpty())
-            throw new RuntimeException("Record must be linked to a Patient");
+            throw new ChaincodeException("Record must be linked to a Patient");
 
         String recordKey = RECORD_PREFIX + record.getRecordId();
         if (!stub.getStringState(recordKey).isEmpty())
-            throw new RuntimeException("Record already exists: " + record.getRecordId());
+            throw new ChaincodeException("Record already exists: " + record.getRecordId());
 
         String patientKey = PATIENT_PREFIX + record.getPatientId();
         String patientJson = stub.getStringState(patientKey);
         if (patientJson == null || patientJson.isEmpty())
-            throw new RuntimeException("Referenced Patient not found: " + record.getPatientId());
+            throw new ChaincodeException("Referenced Patient not found: " + record.getPatientId());
 
         Patient patient = gson.fromJson(patientJson, Patient.class);
         List<String> recordIds = patient.getRecordIds();
@@ -60,7 +70,7 @@ public class RecordContract {
         String key = RECORD_PREFIX + recordId;
         String existing = stub.getStringState(key);
         if (existing == null || existing.isEmpty())
-            throw new RuntimeException("Record not found: " + recordId);
+            throw new ChaincodeException("Record not found: " + recordId);
 
         Record updated = gson.fromJson(recordJson, Record.class);
         if (updated.getRecordId() == null || updated.getRecordId().isEmpty())
@@ -76,7 +86,7 @@ public class RecordContract {
         String key = RECORD_PREFIX + recordId;
         String existing = stub.getStringState(key);
         if (existing == null || existing.isEmpty())
-            throw new RuntimeException("Record not found: " + recordId);
+            throw new ChaincodeException("Record not found: " + recordId);
 
         Record record = gson.fromJson(existing, Record.class);
         String patientId = record.getPatientId();
@@ -106,7 +116,7 @@ public class RecordContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching records: " + e.getMessage());
+            throw new ChaincodeException("Error fetching records: " + e.getMessage());
         }
         return gson.toJson(records);
     }
@@ -125,7 +135,7 @@ public class RecordContract {
                 } catch (JsonSyntaxException ignored) {}
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching patients: " + e.getMessage());
+            throw new ChaincodeException("Error fetching patients: " + e.getMessage());
         }
         return gson.toJson(patients);
     }
@@ -172,14 +182,14 @@ public class RecordContract {
         ChaincodeStub stub = ctx.getStub();
         Prescription pres = gson.fromJson(prescriptionJson, Prescription.class);
         if (pres.getPrescriptionId() == null || pres.getPrescriptionId().isEmpty())
-            throw new RuntimeException("Prescription ID cannot be empty");
+            throw new ChaincodeException("Prescription ID cannot be empty");
         if (pres.getPatientId() == null || pres.getPatientId().isEmpty())
-            throw new RuntimeException("Prescription must be linked to a valid Patient");
+            throw new ChaincodeException("Prescription must be linked to a valid Patient");
 
         String patientKey = PATIENT_PREFIX + pres.getPatientId();
         String patientJson = stub.getStringState(patientKey);
         if (patientJson == null || patientJson.isEmpty())
-            throw new RuntimeException("Referenced Patient not found: " + pres.getPatientId());
+            throw new ChaincodeException("Referenced Patient not found: " + pres.getPatientId());
 
         Patient patient = gson.fromJson(patientJson, Patient.class);
         List<String> prescriptionIds = patient.getPrescriptionsIds();

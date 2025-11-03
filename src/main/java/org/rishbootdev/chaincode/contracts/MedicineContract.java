@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
+import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
@@ -16,7 +17,14 @@ import org.rishbootdev.chaincode.model.Pharma;
 import java.util.ArrayList;
 import java.util.List;
 
-@Contract(name = "MedicineContract")
+@Contract(
+        name = "MedicineContract",
+        info = @Info(
+                title = "Medicine Contract",
+                description = "Manages all the operations related to the medicines",
+                version = "1.0.0"
+        )
+)
 @Default
 public class MedicineContract {
 

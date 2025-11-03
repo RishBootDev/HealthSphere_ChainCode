@@ -1,12 +1,20 @@
 package org.rishbootdev;
 
+import com.google.gson.Gson;
 import org.hyperledger.fabric.contract.ContractRouter;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
+import org.rishbootdev.chaincode.model.Hospital;
+import org.rishbootdev.chaincode.model.Lab;
+import org.rishbootdev.chaincode.model.Patient;
+import org.rishbootdev.chaincode.model.Record;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class App extends ChaincodeBase {
+
+    private static final Gson gson = new Gson();
 
     public static void main(String[] args) throws Exception {
         System.out.println("=== Starting HyperLedger Fabric Chaincode ===");
@@ -40,6 +48,8 @@ public class App extends ChaincodeBase {
                 return newSuccessResponse("PONG: Chaincode is active and responding");
             case "healthCheck":
                 return newSuccessResponse("Blockchain healthcare system operational");
+            case "testLedgerData":
+                return testLedgerData(stub);
             default:
                 return newErrorResponse("Invalid function name or contract not found: " + function);
         }
@@ -70,5 +80,57 @@ public class App extends ChaincodeBase {
         String key = params.get(0);
         stub.delState(key);
         return newSuccessResponse("Record deleted successfully with key: " + key);
+    }
+
+    private Response testLedgerData(ChaincodeStub stub) {
+        try {
+            Hospital hospital = new Hospital(
+                    "HOSP1",
+                    "Apollo Hospital",
+                    "Bangalore",
+                    "gov-HDFHORUE347387438738",
+                    new ArrayList<>(),
+                    new ArrayList<>(),
+                    new ArrayList<>(),
+                    new ArrayList<>()
+            );
+            stub.putStringState("HOSPITAL_" + hospital.getHospitalId(), gson.toJson(hospital));
+
+            Lab lab = new Lab("LAB1", "Central Diagnostics", "HOSP1", new ArrayList<>());
+            stub.putStringState("LAB_" + lab.getLabId(), gson.toJson(lab));
+
+            Patient patient = new Patient(
+                    "PAT1",
+                    "John Doe",
+                    35,
+                    "Male",
+                    "123 MG Road",
+                    null,
+                    "9876543210",
+                    "O+",
+                    "None",
+                    new ArrayList<>(),
+                    new ArrayList<>(),
+                    null,
+                    "HOSP1"
+            );
+            stub.putStringState("PATIENT_" + patient.getPatientId(), gson.toJson(patient));
+
+            Record record = new Record(
+                    "REC1",
+                    "PAT1",
+                    "DOC001",
+                    "HOSP1",
+                    "Checkup report",
+                    "Blood pressure normal",
+                    "Avoid stress",
+                    "2025-11-03"
+            );
+            stub.putStringState("RECORD_" + record.getRecordId(), gson.toJson(record));
+
+            return newSuccessResponse("Test data inserted into ledger successfully");
+        } catch (Exception e) {
+            return newErrorResponse("Failed to load test data: " + e.getMessage());
+        }
     }
 }
