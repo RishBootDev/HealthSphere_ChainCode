@@ -29,11 +29,9 @@ public class MedicineContract {
         if (medicine.getId() == null || medicine.getId().isEmpty()) {
             throw new RuntimeException("Medicine ID cannot be empty");
         }
-
         if (!stub.getStringState(medicine.getId()).isEmpty()) {
             throw new RuntimeException("Medicine already exists: " + medicine.getId());
         }
-
         stub.putStringState(medicine.getId(), gson.toJson(medicine));
     }
 

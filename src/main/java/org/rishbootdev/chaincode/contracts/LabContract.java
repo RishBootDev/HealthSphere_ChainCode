@@ -17,7 +17,7 @@ import java.util.List;
         name = "LabContract",
         info = @Info(
                 title = "Lab Contract",
-                description = "Handles Lab CRUD operations and relationships with Hospitals, Patients, and Lab Reports",
+                description = "Handles Lab operations and relationships with Hospitals, Patients, and Lab Reports",
                 version = "1.0.0"
         )
 )
@@ -102,7 +102,6 @@ public class LabContract {
         }
 
         Lab lab = readLab(ctx, labId);
-
         LabReport report = new LabReport(reportId, patientId, testType, testResult, labId, testDate, remarks);
 
         if (!lab.getReportIds().contains(reportId)) {
@@ -235,7 +234,6 @@ public class LabContract {
         } catch (Exception e) {
             throw new ChaincodeException(e.getMessage());
         }
-
         return reports;
     }
 }

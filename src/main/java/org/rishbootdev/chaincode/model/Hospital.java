@@ -27,6 +27,9 @@ public class Hospital {
     @SerializedName("address")
     private String address;
     @Property
+    @SerializedName("license")
+    private String license;
+    @Property
     @SerializedName("doctorIds")
     private List<String> doctorIds=new ArrayList<>();
     @Property

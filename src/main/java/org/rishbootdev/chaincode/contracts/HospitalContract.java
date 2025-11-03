@@ -34,13 +34,12 @@ public class HospitalContract {
 
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Hospital createHospital(Context ctx, String hospitalId, String name, String address) {
+    public Hospital createHospital(Context ctx, String hospitalId, String name, String address,String license) {
         ChaincodeStub stub = ctx.getStub();
         if (stub.getStringState(hospitalId) != null && !stub.getStringState(hospitalId).isEmpty()) {
             throw new ChaincodeException("Hospital already exists with ID: " + hospitalId);
         }
-
-        Hospital hospital = new Hospital(hospitalId, name, address,
+        Hospital hospital = new Hospital(hospitalId,name,address,license,
                 new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 
         stub.putStringState(hospitalId, gson.toJson(hospital));
@@ -151,16 +150,12 @@ public class HospitalContract {
         if (labJSON == null || labJSON.isEmpty()) {
             throw new ChaincodeException("Lab not found: " + labId);
         }
-
         Lab lab = gson.fromJson(labJSON, Lab.class);
-
         if (!hospital.getLabId().contains(labId)) {
             hospital.getLabId().add(labId);
         }
-
         stub.putStringState(hospitalId, gson.toJson(hospital));
         stub.putStringState(labId, gson.toJson(lab));
-
         return hospital;
     }
 
@@ -168,7 +163,6 @@ public class HospitalContract {
     public void createHospital(Context ctx, String hospitalJson) {
         ChaincodeStub stub = ctx.getStub();
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
-
         if (hospital.getHospitalId() == null || hospital.getHospitalId().isEmpty()) {
             throw new RuntimeException("Hospital ID cannot be empty");
         }
@@ -177,7 +171,6 @@ public class HospitalContract {
         if (!stub.getStringState(key).isEmpty()) {
             throw new RuntimeException("Hospital already exists: " + hospital.getHospitalId());
         }
-
         stub.putStringState(key, gson.toJson(hospital));
     }
 
@@ -308,7 +301,7 @@ public class HospitalContract {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public String RegisterHospital(Context ctx, String hospitalJson) {
+    public String registerHospital(Context ctx, String hospitalJson) {
         ChaincodeStub stub = ctx.getStub();
         Hospital hospital = gson.fromJson(hospitalJson, Hospital.class);
 
@@ -326,7 +319,7 @@ public class HospitalContract {
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String GetHospitalPatients(Context ctx) {
+    public String getHospitalPatients(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         List<Patient> patients = new ArrayList<>();
 

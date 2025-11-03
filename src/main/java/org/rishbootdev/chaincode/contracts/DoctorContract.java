@@ -26,7 +26,7 @@ public class DoctorContract {
     private static final String RECORD_PREFIX = "RECORD_";
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public void CreateDoctor(Context ctx, String doctorJson) {
+    public void createDoctor(Context ctx, String doctorJson) {
         ChaincodeStub stub = ctx.getStub();
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
 
@@ -46,7 +46,7 @@ public class DoctorContract {
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String GetDoctorById(Context ctx, String doctorId) {
+    public String getDoctorById(Context ctx, String doctorId) {
         String state = ctx.getStub().getStringState(DOCTOR_PREFIX + doctorId);
         if (state == null || state.isEmpty()) {
             throw new RuntimeException("Doctor not found: " + doctorId);
@@ -55,7 +55,7 @@ public class DoctorContract {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public String UpdateDoctor(Context ctx, String doctorJson) {
+    public String updateDoctor(Context ctx, String doctorJson) {
         ChaincodeStub stub = ctx.getStub();
         Doctor doctor = gson.fromJson(doctorJson, Doctor.class);
 
@@ -72,7 +72,7 @@ public class DoctorContract {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public String DeleteDoctor(Context ctx, String doctorId) {
+    public String deleteDoctor(Context ctx, String doctorId) {
         ChaincodeStub stub = ctx.getStub();
         String key = DOCTOR_PREFIX + doctorId;
 
@@ -81,11 +81,11 @@ public class DoctorContract {
         }
 
         stub.delState(key);
-        return "🗑️ Doctor deleted successfully: " + doctorId;
+        return "Doctor deleted successfully: " + doctorId;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public String GetAllDoctors(Context ctx) {
+    public String getAllDoctors(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
         List<Doctor> doctors = new ArrayList<>();
 
@@ -152,7 +152,9 @@ public class DoctorContract {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public String RegisterDoctor(Context ctx, String doctorId, String name, String specialization, String hospitalId) {
+    public String RegisterDoctor(Context ctx, String doctorId, String name,
+                                 String specialization, String hospitalId,
+                                 String qualification,String contact) {
         ChaincodeStub stub = ctx.getStub();
 
         Doctor doctor = new Doctor();
@@ -162,6 +164,8 @@ public class DoctorContract {
         doctor.setHospitalId(hospitalId);
         doctor.setPatientId(new ArrayList<>());
         doctor.setRecordId(new ArrayList<>());
+        doctor.setQualification(qualification);
+        doctor.setContact(contact);
 
         String key = DOCTOR_PREFIX + doctorId;
         if (!stub.getStringState(key).isEmpty()) {
@@ -188,7 +192,6 @@ public class DoctorContract {
             stub.putStringState(doctorKey, gson.toJson(doctor));
         }
 
-        // Update patient back-reference (patient.doctorId)
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
         if (patientJson == null || patientJson.isEmpty()) {

@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
-import org.hyperledger.fabric.contract.annotation.Serializer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +20,6 @@ public class Lab {
     @Property
     @SerializedName("labId")
     private String labId;
-
     @Property
     @SerializedName("name")
     private String name;
