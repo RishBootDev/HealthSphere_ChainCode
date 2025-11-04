@@ -3,6 +3,7 @@ package org.rishbootdev.chaincode.contracts;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import org.hyperledger.fabric.contract.Context;
+import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.*;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ChaincodeException;
@@ -16,13 +17,13 @@ import java.util.List;
 @Contract(
         name = "HospitalContract",
         info = @Info(
-                title = "Hospital Contract",
+                title = "HospitalContract",
                 description = "Manages Hospital records and relationships with Doctors, Patients, Labs, and Records",
                 version = "1.1.0"
         )
 )
 @Default
-public class HospitalContract {
+public class HospitalContract implements ContractInterface {
 
     private final Gson gson = new Gson();
 

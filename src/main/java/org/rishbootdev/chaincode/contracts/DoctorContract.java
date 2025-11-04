@@ -2,6 +2,7 @@ package org.rishbootdev.chaincode.contracts;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.rishbootdev.chaincode.model.Doctor;
@@ -20,13 +21,13 @@ import java.util.List;
 @Contract(
         name = "DoctorContract",
         info = @Info(
-                title = "Doctor Contract",
+                title = "DoctorContract",
                 description = "Manages relationships between Patients and other relations",
                 version = "1.0.0"
         )
 )
 @Default
-public class DoctorContract {
+public class DoctorContract implements ContractInterface {
 
     private final Gson gson = new Gson();
     private static final String DOCTOR_PREFIX = "DOCTOR_";

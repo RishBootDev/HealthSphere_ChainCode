@@ -25,6 +25,14 @@
         <lombok.version>1.18.38</lombok.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://www.jitpack.io</url>
+        </repository>
+    </repositories>
+
+
     <dependencies>
         <!-- Hyperledger Fabric Chaincode Shim -->
         <dependency>
@@ -34,7 +42,29 @@
         </dependency>
 
 
+        <!-- Fabric Protobufs (used internally by the chaincode shim) -->
+        <dependency>
+            <groupId>org.hyperledger.fabric</groupId>
+            <artifactId>fabric-protos</artifactId>
+            <version>0.3.7</version>
+            <scope>compile</scope>
+        </dependency>
 
+        <!-- (Optional) Logback, for richer logging than slf4j-simple -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.20</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- (Optional) SLF4J API version alignment with Logback -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>
+            <scope>compile</scope>
+        </dependency>
         <!-- Gson for JSON serialization -->
         <dependency>
             <groupId>com.google.code.gson</groupId>

@@ -3,7 +3,9 @@ package org.rishbootdev.chaincode.contracts;
 
 import com.google.gson.Gson;
 import org.hyperledger.fabric.contract.Context;
+import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contract;
+import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeException;
@@ -16,14 +18,15 @@ import org.rishbootdev.chaincode.model.Record;
 import java.util.ArrayList;
 
 @Contract(
-        name="Test Contract",
+        name="TestContract",
         info = @Info(
-                title = "Test Contract",
+                title = "TestContract",
                 description = "designed for the testing purposes",
                 version = "1.0.0"
         )
 )
-public class TestContract {
+@Default
+public class TestContract implements ContractInterface {
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String ping(Context ctx) {
