@@ -97,7 +97,7 @@ public class TestContract {
             );
             stub.putStringState("PATIENT_" + patient.getPatientId(), gson.toJson(patient));
 
-            Record record = new Record(
+            org.rishbootdev.chaincode.model.Record record = new Record(
                     "REC1",
                     "PAT1",
                     "DOC001",

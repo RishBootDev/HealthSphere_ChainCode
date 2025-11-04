@@ -142,7 +142,7 @@ public class HospitalContract {
             throw new ChaincodeException("Record not found: " + recordId);
         }
 
-        Record record = gson.fromJson(recordJSON, Record.class);
+        org.rishbootdev.chaincode.model.Record record = gson.fromJson(recordJSON,  org.rishbootdev.chaincode.model.Record.class);
 
         if (!hospital.getRecordIds().contains(recordId)) {
             hospital.getRecordIds().add(recordId);
@@ -184,12 +184,6 @@ public class HospitalContract {
 
         return hospital;
     }
-
-
-
-    // ============================================================
-    // ===============  DUPLICATE METHODS (KEPT)  =================
-    // ============================================================
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public void createHospitalBody(Context ctx, String hospitalJson) {
@@ -321,11 +315,11 @@ public class HospitalContract {
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String getRecordsByHospital(Context ctx, String hospitalId) {
         ChaincodeStub stub = ctx.getStub();
-        List<Record> records = new ArrayList<>();
+        List< org.rishbootdev.chaincode.model.Record> records = new ArrayList<>();
 
         try (QueryResultsIterator<KeyValue> results = stub.getStateByRange(RECORD_PREFIX, RECORD_PREFIX + "z")) {
             for (KeyValue kv : results) {
-                Record rec = gson.fromJson(kv.getStringValue(), Record.class);
+                org.rishbootdev.chaincode.model.Record rec = gson.fromJson(kv.getStringValue(),  org.rishbootdev.chaincode.model.Record.class);
                 if (rec != null && hospitalId.equals(rec.getHospitalId())) {
                     records.add(rec);
                 }

@@ -37,7 +37,7 @@ public class RecordContract {
     @Transaction(intent = Transaction.TYPE.SUBMIT)
     public String createPatientRecord(Context ctx, String recordJson) {
         ChaincodeStub stub = ctx.getStub();
-        Record record = gson.fromJson(recordJson, Record.class);
+        org.rishbootdev.chaincode.model.Record record = gson.fromJson(recordJson,  org.rishbootdev.chaincode.model.Record.class);
 
         if (record.getRecordId() == null || record.getRecordId().isEmpty())
             throw new ChaincodeException("Record ID cannot be empty");
@@ -88,7 +88,7 @@ public class RecordContract {
         if (existing == null || existing.isEmpty())
             throw new ChaincodeException("Record not found: " + recordId);
 
-        Record record = gson.fromJson(existing, Record.class);
+        org.rishbootdev.chaincode.model.Record record = gson.fromJson(existing,  org.rishbootdev.chaincode.model.Record.class);
         String patientId = record.getPatientId();
         String patientKey = PATIENT_PREFIX + patientId;
         String patientJson = stub.getStringState(patientKey);
@@ -105,12 +105,12 @@ public class RecordContract {
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String getAllRecords(Context ctx) {
         ChaincodeStub stub = ctx.getStub();
-        List<Record> records = new ArrayList<>();
+        List<org.rishbootdev.chaincode.model.Record> records = new ArrayList<>();
         try (QueryResultsIterator<KeyValue> results =
                      stub.getStateByRange(RECORD_PREFIX, RECORD_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
                 try {
-                    Record record = gson.fromJson(kv.getStringValue(), Record.class);
+                    org.rishbootdev.chaincode.model.Record record = gson.fromJson(kv.getStringValue(),  org.rishbootdev.chaincode.model.Record.class);
                     if (record != null && record.getRecordId() != null && !record.getRecordId().isEmpty())
                         records.add(record);
                 } catch (JsonSyntaxException ignored) {}
@@ -143,11 +143,11 @@ public class RecordContract {
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String searchRecords(Context ctx, String keyword) {
         ChaincodeStub stub = ctx.getStub();
-        List<Record> matched = new ArrayList<>();
+        List< org.rishbootdev.chaincode.model.Record> matched = new ArrayList<>();
         try (QueryResultsIterator<KeyValue> results =
                      stub.getStateByRange(RECORD_PREFIX, RECORD_PREFIX + "\uFFFF")) {
             for (KeyValue kv : results) {
-                Record record = gson.fromJson(kv.getStringValue(), Record.class);
+                Record record = gson.fromJson(kv.getStringValue(),  org.rishbootdev.chaincode.model.Record.class);
                 if (record != null) {
                     String data = gson.toJson(record).toLowerCase();
                     if (data.contains(keyword.toLowerCase())) matched.add(record);
