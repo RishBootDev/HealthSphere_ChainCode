@@ -329,7 +329,4 @@ public class DoctorContract {
 
         return gson.toJson(patients);
     }
-
-
-
 }
