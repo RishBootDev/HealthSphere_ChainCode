@@ -28,6 +28,7 @@ import java.util.ArrayList;
 @Default
 public class TestContract implements ContractInterface {
 
+
     @Transaction(intent = Transaction.TYPE.EVALUATE)
     public String ping(Context ctx) {
         return "PONG: Chaincode is active and responding";
