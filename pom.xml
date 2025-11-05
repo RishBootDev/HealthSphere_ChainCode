@@ -80,13 +80,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- SLF4J Logging API -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-
         <!-- SLF4J Simple Implementation -->
         <dependency>
             <groupId>org.slf4j</groupId>
